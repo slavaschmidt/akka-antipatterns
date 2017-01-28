@@ -44,6 +44,7 @@ trait LoggingBenchmark extends TestConfig {
   private val testShortInterpolated = testSingle(PingActor.siprops, PongActor.props) _
   private val testShortParametrized = testSingle(PingActor.spprops, PongActor.props) _
   private val testLongChecking = testSingle(PingActor.lcprops, PongActor.props) _
+  private val testScalaLogging = testSingle(PingActor.slprops, PongActor.props) _
 
   def compareLogging(implicit system: ActorSystem): Unit =
     performance of "Logging" in {
@@ -61,6 +62,9 @@ trait LoggingBenchmark extends TestConfig {
       }
       measure method "simple parametrization" in {
         using(messageCount) in { testShortParametrized }
+      }
+      measure method "scala logging" in {
+        using(messageCount) in { testScalaLogging }
       }
     }
 

@@ -1,6 +1,9 @@
 package scalaua2017
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import com.typesafe.scalalogging.StrictLogging
+
+import scalaua2017.logging.TestLogger
 
 object logging {
 
@@ -28,6 +31,10 @@ object logging {
   trait LongCheckingTestLogger extends TestLogger with ActorLogging with Actor {
     override def writeLog(): Unit =
       if (log.isDebugEnabled) log.debug(s"Current message times: {}", times.mkString(","))
+  }
+  trait ScalaLoggingTestLogger extends TestLogger with ActorLogging with Actor with StrictLogging {
+    override def writeLog(): Unit =
+      logger.debug(s"Current message times: {}", times.mkString(","))
   }
 
   class PongActor extends Actor with ActorLogging {
@@ -61,6 +68,7 @@ object logging {
   class LCPingActor extends PingActor with LongCheckingTestLogger
   class SIPingActor extends PingActor with ShortInterpolatingTestLogger
   class SPPingActor extends PingActor with ShortParametrizedTestLogger
+  class SLPingActor extends PingActor with ScalaLoggingTestLogger
 
   object PingActor {
     val liprops: Props = Props[LIPingActor]
@@ -68,6 +76,7 @@ object logging {
     val lcprops: Props = Props[LCPingActor]
     val siprops: Props = Props[SIPingActor]
     val spprops: Props = Props[SPPingActor]
+    val slprops: Props = Props[SLPingActor]
   }
   object PongActor {
     val props: Props = Props[PongActor]
@@ -78,4 +87,18 @@ object logging {
   case object Ping
   case object Pong
 
+}
+
+trait CompileTimeSafety extends TestLogger with ActorLogging with Actor {
+  val a, b = 1
+  // compiles, but obviously b is missing
+  log.debug("Values: a = {}, b = {}", a)
+  // but...
+  log.debug(s"Values: a = ${a}, b = ${}")
+  // or
+  log.debug(s"Values: a = ${a}, b = {b}")
+  // or
+  log.debug("Values: a = ${a}, b = ${b}")
+  // or
+  log.debug(s"Values: a = ${a}, b = S{b}")
 }

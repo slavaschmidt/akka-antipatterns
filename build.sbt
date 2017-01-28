@@ -9,6 +9,7 @@ resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repos
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.4.16",
   "com.typesafe.akka" %% "akka-slf4j" % "2.4.16",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
   "com.typesafe.akka" %% "akka-testkit" % "2.4.16" % "test",
   "org.scalatest" %% "scalatest" % "3.0.1" % "test",
   "com.storm-enroute" %% "scalameter" % "0.8.2" % "test"
