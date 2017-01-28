@@ -1,4 +1,5 @@
-activator-akka-scala-seed
+akka-antipatterns talk Scalaua 2017
 =========================
 
-A minimal seed template for an Akka with Scala build 
+The code examples for the Scalaua 2017 talk "Akka-Antipatterns"
+ 

@@ -1,0 +1,28 @@
+:::Summary of regression test results - Accepter():::
+
+Test group: Logging.complex interpolation
+- Logging.complex interpolation.Test-0 measurements:
+  - at count -> 1000: passed
+    (mean = 70.47 ms, ci = <63.95 ms, 77.00 ms>, significance = 1.0E-10)
+
+Test group: Logging.complex parametrization
+- Logging.complex parametrization.Test-1 measurements:
+  - at count -> 1000: passed
+    (mean = 65.43 ms, ci = <60.87 ms, 69.99 ms>, significance = 1.0E-10)
+
+Test group: Logging.complex checking
+- Logging.complex checking.Test-2 measurements:
+  - at count -> 1000: passed
+    (mean = 9.42 ms, ci = <-5.65 ms, 24.49 ms>, significance = 1.0E-10)
+
+Test group: Logging.simple interpolation
+- Logging.simple interpolation.Test-3 measurements:
+  - at count -> 1000: passed
+    (mean = 14.42 ms, ci = <13.05 ms, 15.79 ms>, significance = 1.0E-10)
+
+Test group: Logging.simple parametrization
+- Logging.simple parametrization.Test-4 measurements:
+  - at count -> 1000: passed
+    (mean = 13.33 ms, ci = <11.08 ms, 15.58 ms>, significance = 1.0E-10)
+
+Summary: 5 tests passed, 0 tests failed.
