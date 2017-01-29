@@ -23,8 +23,10 @@ trait ConnectionPoolBenchmark extends TestConfig {
 
   private def testSingle(pong: Props, ping: Props)(count: Int)(implicit system:ActorSystem) {
     implicit val timeout = Timeout(600 seconds)
-    val future = system.actorOf(ping) ? Start(pong, count)
+    val actor = system.actorOf(ping)
+    val future = actor ? Start(pong, count)
     Await.ready(future, timeout.duration)
+    actor ! PoisonPill
   }
 
   private val testNoPool = testSingle(PongActor.nprops, PingActor.props) _
@@ -42,11 +44,11 @@ trait ConnectionPoolBenchmark extends TestConfig {
       }
       measure method "with good behaving pool" in {
         using(messageCount) in { testBoneCpPool }
-      }*/
-      measure method "with good behaving pool and router" in {
+      }
+      */
+      measure method "with actor based pool and router" in {
         using(messageCount) in { testWithRouter }
       }
-
     }
 
   compareLogging

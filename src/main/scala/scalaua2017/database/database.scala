@@ -1,6 +1,6 @@
 package scalaua2017
 
-import java.sql.Connection
+import java.sql.{Connection, PreparedStatement}
 
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import akka.routing.RoundRobinPool
@@ -12,15 +12,16 @@ object database {
   val Config = new Config("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/pv2020?useSSL=false", "root","")
 
   trait DbWriter extends ConnectionFactory {
-    def write(): Unit = newConnection(ConnectionIdentifier(Random.nextLong().toString)) map { conn =>
-      val str = Random.nextString(255)
-      val time = Random.nextInt()
-      val st = conn.prepareStatement(s"insert into conn_test (str, time) values (?, ?)")
-      st.setString(1, str)
-      st.setInt(2, time)
+    def statement: Option[PreparedStatement] = None
+    def close(connection: Connection): Unit = connection.close()
+    def connection: Option[Connection] = newConnection(ConnectionIdentifier(Random.nextLong().toString))
+    def write(): Unit = connection map { conn =>
+      val st = statement.getOrElse(conn.prepareStatement(s"insert into conn_test (str, time) values (?, ?)"))
+      st.setString(1, Random.nextString(255))
+      st.setInt(2, Random.nextInt())
       st.execute()
-      st.close()
-      conn.close()
+      if (statement.isEmpty) st.close()
+      close(conn)
     }
   }
 
@@ -39,7 +40,6 @@ object database {
         count += 1
         if (count >= countTo) {
           initiator ! Done(count)
-          self ! PoisonPill
         }
     }
 
@@ -53,10 +53,10 @@ object database {
           peer ! PoisonPill
         }
         context.become(waiter(sender(), count))
-
     }
   }
-  class RoutingPingActor extends  PingActor {
+
+  class RoutingPingActor extends PingActor {
     override def initialize: Receive = {
       case Start(props: Props, count: Int) =>
         val peer = context.actorOf(props)
@@ -65,21 +65,35 @@ object database {
     }
   }
 
-  class NoPoolPingActor extends PongActor {
-    override def newConnection(name: ConnectionIdentifier): Option[Connection] = NoConnectionPool.newConnection(name)
+  trait PreparedPongActor extends PongActor {
+    override val connection: Option[Connection] = newConnection(ConnectionIdentifier(Random.nextLong().toString))
+    override def close(connection: Connection) = Unit
+    override val statement: Option[PreparedStatement] =
+       connection map { conn =>
+        conn.prepareStatement(s"insert into conn_test (str, time) values (?, ?)")
+      }
   }
-  class LiftPingActor extends PongActor {
+
+  class NoPoolPongActor extends PongActor {
+    override def newConnection(name: ConnectionIdentifier): Option[Connection] =
+      NoConnectionPool.newConnection(name)
+  }
+  class LiftPongActor extends PongActor {
     override def newConnection(name: ConnectionIdentifier): Option[Connection] = LiftConnectionPool .newConnection(name)
   }
-  class BoneCpPingActor extends PongActor {
+  class BoneCpPongActor extends PongActor {
+    override def newConnection(name: ConnectionIdentifier): Option[Connection] = ExternalConnectionPool.newConnection(name)
+  }
+  class RoutingPongActor extends PreparedPongActor {
     override def newConnection(name: ConnectionIdentifier): Option[Connection] = ExternalConnectionPool.newConnection(name)
   }
 
   object PongActor {
-    val nprops: Props = Props[NoPoolPingActor].withDispatcher("akka.actor.db-worker-dispatcher")
-    val lprops: Props = Props[LiftPingActor].withDispatcher("akka.actor.db-worker-dispatcher")
-    val bprops: Props = Props[BoneCpPingActor].withDispatcher("akka.actor.db-worker-dispatcher")
-    val rprops: Props = Props[BoneCpPingActor].withDispatcher("akka.actor.db-worker-dispatcher").withRouter(RoundRobinPool(2))
+    val nprops: Props = Props[NoPoolPongActor].withDispatcher("akka.actor.db-worker-dispatcher")
+    val lprops: Props = Props[LiftPongActor].withDispatcher("akka.actor.db-worker-dispatcher")
+    val bprops: Props = Props[BoneCpPongActor].withDispatcher("akka.actor.db-worker-dispatcher")
+    val rprops: Props = Props[RoutingPongActor].withDispatcher("akka.actor.db-small-dispatcher")
+      .withRouter(RoundRobinPool(10))
   }
   object PingActor {
     val props: Props = Props[PingActor]

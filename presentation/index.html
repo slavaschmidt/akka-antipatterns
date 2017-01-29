@@ -68,10 +68,12 @@
 <div id="impress" data-perspective="0">
 
     <div id="mindmap" class="step">
-        <img src="images/mindmap2.png" usemap="#mapnavigation"/>
+        <img src="images/mindmap2.png" />
     </div>
 
-    <a id="logging" class="step hidden" data-x="-385" data-y="-162" data-z="2" data-scale=".05" href="logging">
+  <!-- LOGGING -->
+
+    <a id="logging" class="step hidden" data-x="-385" data-y="-162" data-z="2" data-scale=".05" href="#logging">
     </a>
 
     <div id="logging-code-1" class="step" data-x="-400" data-y="-173" data-z="2" data-scale=".01">
@@ -263,8 +265,157 @@ Test group: Logging.simple parametrization
         <li>Or just pretend that "hardware is cheap"</li><br>
         </ul>
       </div>
-      </div>
+    </div>
 
+
+    <!-- DATABASE -->
+
+    <a id="database" class="step hidden" data-x="300" data-y="-168" data-z="2" data-scale="0.1" href="#database" >
+    </a>
+
+    <div id="database-writer" class="step" data-x="245" data-y="-177" data-z="2" data-scale=".01">
+      <pre>
+
+  <span class="s0">trait </span><span class="s1">DbWriter </span><span class="s0">extends </span><span class="s1">ConnectionFactory { 
+    
+    </span><span class="s0">def </span><span class="s1">statement: Option[PreparedStatement] = None 
+    
+    </span><span class="s0">def </span><span class="s1">close(connection: Connection): Unit = connection.close() 
+    
+    </span><span class="s0">def </span><span class="s1">connection: Option[Connection] = newConnection(
+      ConnectionIdentifier(Random.nextLong().toString)) 
+    
+    </span><span class="s0">def </span><span class="s1">write(): Unit = connection map { conn =&gt; 
+      </span><span class="s0">val </span><span class="s1">st = statement.getOrElse(
+        conn.prepareStatement(</span><span class="s2">s&quot;insert into conn_test (str, time) values (?, ?)&quot;</span><span class="s1">)) 
+      st.setString(</span><span class="s3">1</span><span class="s1">, Random.nextString(</span><span class="s3">255</span><span class="s1">)) 
+      st.setInt(</span><span class="s3">2</span><span class="s1">, Random.nextInt()) 
+      st.execute() 
+      </span><span class="s0">if </span><span class="s1">(statement.isEmpty) st.close() 
+      close(conn) 
+    } 
+
+  } 
+ 
+  </span>
+      </pre>
+    </div>  
+
+    <div id="database-actors-pong" class="step" data-x="260" data-y="-177" data-z="2" data-scale=".01">
+      <pre>
+
+  <span class="s0">trait </span><span class="s1">PongActor </span><span class="s0">extends </span><span class="s1">Actor </span><span class="s0">with </span><span class="s1">ActorLogging  </span><span class="s0">with </span><span class="s1">DbWriter { 
+    </span><span class="s0">def </span><span class="s1">receive: Receive = { 
+      </span><span class="s0">case </span><span class="s1">Ping =&gt; 
+        write() 
+        sender() ! Pong 
+    } 
+  } 
+ 
+  </span>
+
+      </pre>
+    </div>  
+
+    <div id="database-actors-ping" class="step" data-x="275" data-y="-177" data-z="2" data-scale=".01">
+      <pre>
+
+  <span class="s0">class </span><span class="s1">PingActor </span><span class="s0">extends </span><span class="s1">Actor </span><span class="s0">with </span><span class="s1">ActorLogging { 
+    </span><span class="s0">var </span><span class="s1">count = </span><span class="s3">0</span><span class="s1"> 
+    </span><span class="s0">def </span><span class="s1">waiter(initiator: ActorRef, countTo: Int): Receive = { 
+      </span><span class="s0">case </span><span class="s1">Pong =&gt; 
+        count += </span><span class="s3">1</span><span class="s1"> 
+        </span><span class="s0">if </span><span class="s1">(count &gt;= countTo) { 
+          initiator ! Done(count) 
+          self ! PoisonPill 
+        } 
+    } 
+ 
+    </span><span class="s0">def </span><span class="s1">receive: Receive = initialize 
+ 
+    </span><span class="s0">def </span><span class="s1">initialize: Receive = { 
+      </span><span class="s0">case </span><span class="s1">Start(props: Props, count: Int) =&gt; 
+        </span><span class="s0">for </span><span class="s1">(i &lt;- </span><span class="s3">0 </span><span class="s1">to count) { 
+          </span><span class="s0">val </span><span class="s1">peer = context.actorOf(props) 
+          peer ! Ping 
+          peer ! PoisonPill 
+        } 
+        context.become(waiter(sender(), count)) 
+    } 
+  } 
+  </span>      
+      </pre>
+    </div>  
+
+    <div id="database-actors-config" class="step" data-x="290" data-y="-177" data-z="2" data-scale=".01">
+      <pre>
+
+
+
+  <span class="s0">class </span><span class="s1">NoPoolPongActor </span><span class="s0">extends </span><span class="s1">PongActor { 
+    </span><span class="s0">override def </span><span class="s1">newConnection(name: ConnectionIdentifier): Option[Connection] = 
+      NoConnectionPool.newConnection(name) 
+  } 
+
+
+
+  </span><span class="s0">class </span><span class="s1">LiftPongActor </span><span class="s0">extends </span><span class="s1">PongActor { 
+    </span><span class="s0">override def </span><span class="s1">newConnection(name: ConnectionIdentifier): Option[Connection] = 
+      LiftConnectionPool.newConnection(name) 
+  } 
+
+
+
+  </span><span class="s0">class </span><span class="s1">BoneCpPongActor </span><span class="s0">extends </span><span class="s1">PongActor { 
+    </span><span class="s0">override def </span><span class="s1">newConnection(name: ConnectionIdentifier): Option[Connection] = 
+      ExternalConnectionPool.newConnection(name) 
+  } 
+
+  </span>
+      </pre>
+    </div>  
+
+    <div id="database-result-no-pool" class="step" data-x="305" data-y="-177" data-z="2" data-scale=".01">
+      <img class="slide" src="images/database/NoCP.png" />
+    </div>  
+
+    <div id="database-result-lift-pool" class="step" data-x="320" data-y="-177" data-z="2" data-scale=".01">
+      <img class="slide" src="images/database/LiftCP.png" />
+    </div>  
+
+    <div id="database-result-bonecp-pool" class="step" data-x="335" data-y="-177" data-z="2" data-scale=".01">
+      <img class="slide" src="images/database/BoneCP.png" />
+    </div>  
+
+    <div id="database-result-bonecp-router-code" class="step" data-x="350" data-y="-177" data-z="2" data-scale=".01">
+    <pre>
+  
+  <span class="s0">trait </span><span class="s1">PreparedPongActor </span><span class="s0">extends </span><span class="s1">PongActor { 
+    </span><span class="s0">override val </span><span class="s1">connection: Option[Connection] = 
+      newConnection(ConnectionIdentifier(Random.nextLong().toString)) 
+    </span><span class="s0">override def </span><span class="s1">close(connection: Connection) = Unit 
+    </span><span class="s0">override val </span><span class="s1">statement: Option[PreparedStatement] = 
+       connection map { conn =&gt; 
+        conn.prepareStatement(</span><span class="s2">s&quot;insert into conn_test (str, time) values (?, ?)&quot;</span><span class="s1">) 
+      } 
+  } 
+ 
+  </span>
+  <span class="s0">object </span><span class="s1">PongActor { 
+    </span><span class="s0">val </span><span class="s1">rprops: Props = Props[RoutingPongActor]
+      .withDispatcher(</span><span class="s2">&quot;akka.actor.db-small-dispatcher&quot;</span><span class="s1">) 
+      .withRouter(RoundRobinPool(</span><span class="s3">2</span><span class="s1">)) 
+  } 
+
+  </span><span class="s0">object </span><span class="s1">PingActor { 
+    </span><span class="s0">val </span><span class="s1">rprops: Props = Props[RoutingPingActor] 
+  } 
+    </pre>
+    </div>
+
+    <div id="database-result-bonecp-router" class="step" data-x="365" data-y="-177" data-z="2" data-scale=".01">
+      <img class="slide" src="images/database/BoneCPRouter.png" />
+    </div>  
 </div>
 
 <!--
