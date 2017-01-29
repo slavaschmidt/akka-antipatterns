@@ -1,4 +1,4 @@
-package scalaua2017.database
+package scalaua2017
 
 import java.sql.{Connection, DriverManager}
 
@@ -6,7 +6,7 @@ import com.jolbox.bonecp.{BoneCP, BoneCPConfig}
 
 import scala.util.Try
 
-case class ConnectionIdentifier(url: String)
+case class ConnectionIdentifier(name: String)
 
 case class Config(driver: String, url: String, user: String, pass: String)
 
@@ -15,18 +15,18 @@ trait ConnectionFactory {
 }
 
 trait DriverConnection {
-  def cfg: Config
+  def cfg: Config = scalaua2017.database.Config
   Class.forName(cfg.driver)
   def createOne(name: ConnectionIdentifier): Option[Connection] =
     Try { DriverManager.getConnection(cfg.url, cfg.user, cfg.pass) }.toOption
 }
 
-class NoConnectionPool(val cfg: Config) extends DriverConnection with ConnectionFactory {
+object NoConnectionPool extends DriverConnection with ConnectionFactory {
   override def newConnection(name: ConnectionIdentifier): Option[Connection] = createOne(name)
 }
 
 
-class ExternalConnectionPool(cfg: Config) extends ConnectionFactory {
+object ExternalConnectionPool extends DriverConnection with ConnectionFactory {
 
   private object ConnectionPool {
     val minConnectionsPerPartition  = 10
@@ -58,7 +58,7 @@ class ExternalConnectionPool(cfg: Config) extends ConnectionFactory {
 
 }
 
-class ProtoDBVendor(val cfg: Config) extends DriverConnection with ConnectionFactory {
+object LiftConnectionPool extends DriverConnection with ConnectionFactory {
   private var pool: List[Connection] = Nil
   private var poolSize = 0
   private var tempMaxSize = maxPoolSize
@@ -79,7 +79,7 @@ class ProtoDBVendor(val cfg: Config) extends DriverConnection with ConnectionFac
     * The absolute maximum that this pool can extend to
     * The default is 20.  Override this method to change.
     */
-  protected def doNotExpandBeyond = 20
+  protected def doNotExpandBeyond = 200
 
   /**
     * The logic for whether we can expand the pool beyond the current size.  By
