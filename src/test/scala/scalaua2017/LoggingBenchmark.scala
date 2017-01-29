@@ -7,22 +7,8 @@ import akka.util.Timeout
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import org.scalameter.api._
-import org.scalameter.picklers.Implicits._
 
 import scalaua2017.logging.{PingActor, PongActor, Start}
-
-class TestConfig extends Bench.OfflineReport {
-  override def persistor = Persistor.None
-
-  override lazy val executor = LocalExecutor(
-    new Executor.Warmer.Default,
-    Aggregator.min,
-    new Measurer.Default
-  )
-  val messageCount: Gen[Int] = Gen.single("count")(1000)
-  implicit val system = ActorSystem("akka-anti-patterns")
-}
 
 trait LoggingBenchmark extends TestConfig {
 
@@ -71,4 +57,4 @@ trait LoggingBenchmark extends TestConfig {
   compareLogging
 }
 
-object LoggingBenchmark extends LoggingBenchmark
+object LoggingBenchmark extends ConnectionPoolBenchmark
